@@ -51,5 +51,7 @@ def keygen():
         "tempo_keygen_ms": tempo_gasto_ms  # --- ENVIANDO O DADO COLETADO ---
     })
 
+# --- CODIGO ALTERADO PARA SUPORTAR MULTIPLAS REQUISICOES LOCAIS ---
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=PORT)
+    # O parametro threaded=True impede que o servidor congele se receber chamadas em lote no mesmo Laptop
+    app.run(host='0.0.0.0', port=PORT, threaded=True)
