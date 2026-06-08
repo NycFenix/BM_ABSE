@@ -15,6 +15,15 @@ def upload():
     storage[file_id] = data
     return jsonify({"status": "success", "file_id": file_id}), 200
 
+@app.route('/contract_config', methods=['GET'])
+def get_contract_config():
+    try:
+        with open("contract_config.json", "r") as f:
+            config = json.load(f)
+        return jsonify(config), 200
+    except FileNotFoundError:
+        return jsonify({"error": "Configuracao nao encontrada no servidor"}), 404
+
 @app.route('/semi_decrypt', methods=['POST'])
 def semi_decrypt():
     req_data = request.json

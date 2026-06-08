@@ -25,14 +25,25 @@ cloud_url = f"http://{LAPTOP_IP}:5000/upload"
 # contract_abi = [...]  # Insira a ABI aqui
 # contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
+# try:
+#     with open("contract_config.json", "r") as config_file:
+#         config = json.load(config_file)
+#     contract_address = config["contract_address"]
+#     contract_abi = config["abi"]
+#     print(f"[*] Contrato carregado automaticamente no endereço: {contract_address}")
+# except FileNotFoundError:
+#     print("[ERRO] Arquivo 'contract_config.json' não encontrado. Execute o deploy_contract.py primeiro.")
+#     sys.exit(1)
+
 try:
-    with open("contract_config.json", "r") as config_file:
-        config = json.load(config_file)
+    # Faz uma requisição GET para a Nuvem buscar o endereço e a ABI atualizados do Ganache
+    res_config = requests.get(f"http://{LAPTOP_IP}:5000/contract_config")
+    config = res_config.json()
     contract_address = config["contract_address"]
     contract_abi = config["abi"]
-    print(f"[*] Contrato carregado automaticamente no endereço: {contract_address}")
-except FileNotFoundError:
-    print("[ERRO] Arquivo 'contract_config.json' não encontrado. Execute o deploy_contract.py primeiro.")
+    print(f"[*] Contrato sincronizado via Nuvem no endereço: {contract_address}")
+except Exception as e:
+    print(f"[ERRO] Nao foi possivel sincronizar o contrato com a Nuvem: {e}")
     sys.exit(1)
 
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)

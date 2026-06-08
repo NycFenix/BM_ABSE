@@ -20,12 +20,23 @@ SEARCH_KEYWORD = sys.argv[3]
 LAPTOP_IP = "192.168.0.112"
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 
+# try:
+#     with open("contract_config.json", "r") as f:
+#         config = json.load(f)
+#     contract = w3.eth.contract(address=config["contract_address"], abi=config["abi"])
+# except FileNotFoundError:
+#     print("[ERRO] Executar o deploy_contract.py no laptop primeiro.")
+#     sys.exit(1)
+
 try:
-    with open("contract_config.json", "r") as f:
-        config = json.load(f)
-    contract = w3.eth.contract(address=config["contract_address"], abi=config["abi"])
-except FileNotFoundError:
-    print("[ERRO] Executar o deploy_contract.py no laptop primeiro.")
+    # Faz uma requisição GET para a Nuvem buscar o endereço e a ABI atualizados do Ganache
+    res_config = requests.get(f"http://{LAPTOP_IP}:5000/contract_config")
+    config = res_config.json()
+    contract_address = config["contract_address"]
+    contract_abi = config["abi"]
+    print(f"[*] Contrato sincronizado via Nuvem no endereço: {contract_address}")
+except Exception as e:
+    print(f"[ERRO] Nao foi possivel sincronizar o contrato com a Nuvem: {e}")
     sys.exit(1)
 
 AA_ENDPOINTS = {
@@ -43,6 +54,7 @@ if DU_NAME not in USER_PROFILES:
     sys.exit(1)
 
 profile = USER_PROFILES[DU_NAME]
+#w3.eth.default_account = w3.eth.accounts[profile["acc"]]
 w3.eth.default_account = w3.eth.accounts[profile["acc"]]
 
 # --- FUNÇÃO MODIFICADA PARA RECEBER O NÚMERO DE ATRIBUTOS E RETORNAR OS TEMPOS DE EXECUÇÃO ---
