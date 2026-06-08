@@ -1,6 +1,7 @@
 import sys
 import requests
 import hashlib
+import json
 from py_ecc.bn128 import G1, G2, multiply, curve_order
 from Crypto.Cipher import AES
 from web3 import Web3
@@ -16,9 +17,22 @@ SEARCH_KEYWORD = sys.argv[3]
 LAPTOP_IP = "192.168.1.50"
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 
-contract_address = "0x0000000000000000000000000000000000000000"
-contract_abi = [...]
+# contract_address = "0x0000000000000000000000000000000000000000"
+# contract_abi = [...]
+# contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+
+try:
+    with open("contract_config.json", "r") as config_file:
+        config = json.load(config_file)
+    contract_address = config["contract_address"]
+    contract_abi = config["abi"]
+    print(f"[*] Contrato carregado automaticamente no endereço: {contract_address}")
+except FileNotFoundError:
+    print("[ERRO] Arquivo 'contract_config.json' não encontrado. Execute o deploy_contract.py primeiro.")
+    sys.exit(1)
+
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+
 
 # Configuração de Atributos e Endereços das 3 Autoridades para a demonstração
 AA_ENDPOINTS = {
