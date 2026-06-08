@@ -16,7 +16,7 @@ KEYWORD = sys.argv[2]
 LAPTOP_IP = "192.168.0.112"  # Substitua pelo IP real do seu laptop ou URL do Render/Ngrok
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 cloud_url = f"http://{LAPTOP_IP}:5000/upload"
-
+#cloud_url = "https://bm-abse.onrender.com/"
 contract_address = "0x0000000000000000000000000000000000000000"  # Mude após deploy
 contract_abi = [...]  # Insira a ABI aqui
 
