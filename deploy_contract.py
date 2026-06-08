@@ -3,7 +3,8 @@ from web3 import Web3
 from solcx import compile_standard, install_solc
 
 # 1. Configuração de Conexão com o Ganache Local
-GANACHE_URL = "http://192.168.0.112:7545"
+#GANACHE_URL = "http://192.168.0.112:7545"
+GANACHE_URL = "http://127.0.0.1:7545"  # IP local do seu Ganache no Laptop
 # IP local do seu Ganache no Laptop
 w3 = Web3(Web3.HTTPProvider(GANACHE_URL))
 

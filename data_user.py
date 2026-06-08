@@ -48,7 +48,6 @@ if DU_NAME not in USER_PROFILES:
 profile = USER_PROFILES[DU_NAME]
 w3.eth.default_account = w3.eth.accounts[profile["acc"]]
 
-# --- NOVO BLOCO ADICIONADO PARA COLETAR AS MÉTRICAS DO GRÁFICO 3 VIA REDE ---
 def coletar_metricas_keygen_autoridades():
     print("\n[Benchmark Gráfico 3] Medindo impacto de Múltiplas Autoridades (Total: 12 Atributos)...")
     
@@ -121,12 +120,13 @@ def executar_teste_benchmark(num_attrs):
     return None, None, None, None
 
 # --- BLOCO PRINCIPAL ATUALIZADO PARA EXIBIR OS 3 GRÁFICOS INTEGRADOS ---
+# --- BLOCO FINAL MODIFICADO PARA GRAVAÇÃO SEGURA DE DADOS ---
 if __name__ == "__main__":
     casos_atributos = [2, 4, 6, 8]
     historico_nuvem, historico_iot, historico_payload, historico_original = [], [], [], []
     
     print("="*60)
-    print(f" AMBIENTE DE BENCHMARK TRUPLO (VALIDACAO TOTAL DO TCC) - {DU_NAME}")
+    print(f" AMBIENTE DE BENCHMARK TRUPLO (COLETA DE METRICAS) - {DU_NAME}")
     print("="*60)
     
     # Coleta de dados para os gráficos 1 e 2
@@ -142,47 +142,21 @@ if __name__ == "__main__":
     dados_grafico3 = coletar_metricas_keygen_autoridades()
             
     if len(historico_nuvem) == len(casos_atributos):
-        print("\n[Benchmark] Montando a janela final de validacao cientifica...")
+        # Estrutura os dados reais coletados em um dicionário estruturado
+        dados_finais = {
+            "casos_atributos": casos_atributos,
+            "historico_nuvem": historico_nuvem,
+            "historico_iot": historico_iot,
+            "historico_payload": historico_payload,
+            "historico_original": historico_original,
+            "dados_grafico3": dados_grafico3
+        }
         
-        # Inicializa um painel com 3 subplots lado a lado
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
-        
-        # ---- PLOT GRÁFICO 1 (TEMPO DE EXECUÇÃO) ----
-        ax1.plot(casos_atributos, historico_nuvem, color='#1f77b4', marker='o', linewidth=2, label='SemiDecrypt (Nuvem)')
-        ax1.plot(casos_atributos, historico_iot, color='#d62728', marker='s', linewidth=2, label='DataDecrypt (IoT)')
-        ax1.set_title('Gráfico 1: Desempenho Computacional', fontsize=10, fontweight='bold')
-        ax1.set_xlabel('Quantidade de Atributos')
-        ax1.set_ylabel('Tempo (ms)')
-        ax1.set_xticks(casos_atributos)
-        ax1.grid(True, linestyle='--', alpha=0.5)
-        ax1.legend()
-        
-        # ---- PLOT GRÁFICO 2 (OVERHEAD DE REDE) ----
-        x_indices = np.arange(len(casos_atributos))
-        width = 0.35
-        ax2.bar(x_indices - width/2, historico_original, width, label='Dado Original', color='#7f7f7f', alpha=0.7)
-        ax2.bar(x_indices + width/2, historico_payload, width, label='Texto Cifrado (Rede)', color='#2ca02c', alpha=0.8)
-        ax2.set_title('Gráfico 2: Sobrecarga de Comunicação', fontsize=10, fontweight='bold')
-        ax2.set_xlabel('Quantidade de Atributos')
-        ax2.set_ylabel('Tamanho do Pacote (Bytes)')
-        ax2.set_xticks(x_indices)
-        ax2.set_xticklabels(casos_atributos)
-        ax2.grid(True, axis='y', linestyle='--', alpha=0.5)
-        ax2.legend()
-        
-        # ---- PLOT GRÁFICO 3 (DISTRIBUIÇÃO DE CARGA MULTI-AUTORIDADE) ----
-        cenarios = ['1 AA Central', '2 AAs (Dividido)', '3 AAs (Dividido)']
-        bars = ax3.bar(cenarios, dados_grafico3, color=['#9467bd', '#bcbd22', '#17becf'], width=0.5, edgecolor='#444444', linewidth=0.7)
-        for bar in bars:
-            height = bar.get_height()
-            ax3.annotate(f'{height:.1f} ms', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontweight='bold')
-        ax3.set_title('Gráfico 3: Tempo de Emissão (KeyGen)\npor Servidor (Total: 12 Atributos)', fontsize=10, fontweight='bold')
-        ax3.set_ylabel('Tempo de Processamento Criptográfico (ms)')
-        ax3.set_ylim(0, max(dados_grafico3) * 1.2)
-        ax3.grid(True, axis='y', linestyle='--', alpha=0.5)
-        
-        plt.tight_layout()
-        plt.savefig('tcc_validacao_completa.png', dpi=300)
-        print("[SUCESSO] Imagem unificada salva como 'tcc_validacao_completa.png'.")
-        plt.show()
+        # Força a escrita imediata no disco (Garante que os dados não se percam)
+        with open("metricas_demonstracao.json", "w") as f_meta:
+            json.dump(dados_finais, f_meta, indent=4)
+            
+        print("\n" + "="*60)
+        print("[SUCESSO] Metricas salvas em 'metricas_demonstracao.json'!")
+        print("Agora execute 'python plot_TCC.py' para gerar o painel de graficos.")
+        print("="*60 + "\n")
