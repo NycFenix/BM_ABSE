@@ -17,7 +17,8 @@ DU_NAME = sys.argv[1]
 INDEX_ID = int(sys.argv[2])
 SEARCH_KEYWORD = sys.argv[3]
 
-LAPTOP_IP = "192.168.0.112"
+LAPTOP_IP = "127.0.0.1"
+#LAPTOP_IP = "192.168.0.112"
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 
 try:

@@ -13,8 +13,8 @@ if len(sys.argv) < 3:
 
 DO_NAME = sys.argv[1]
 KEYWORD = sys.argv[2]
-
-LAPTOP_IP = "192.168.0.112"  # Substitua pelo IP real do seu laptop ou URL do Render/Ngrok
+LAPTOP_IP = "127.0.0.1"
+#LAPTOP_IP = "192.168.0.112"  # Substitua pelo IP real do seu laptop ou URL do Render/Ngrok
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 cloud_url = f"http://{LAPTOP_IP}:5000/upload"
 #cloud_url = "https://bm-abse.onrender.com/"
@@ -51,9 +51,10 @@ contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 # Atribui uma conta do Ganache baseada no número do Data Owner para não colidir chaves na blockchain
 if DO_NAME == "DO_1":
     w3.eth.default_account = w3.eth.accounts[0]
-else:
+elif DO_NAME == "DO_2":
     w3.eth.default_account = w3.eth.accounts[2] # DO_2 usa outra conta
-
+else: 
+    w3.eth.default_account = w3.eth.accounts[5] # DO_3 usa outra conta
 def encrypt_and_register():
     print(f"[{DO_NAME}] Iniciando processo de criptografia para o termo: '{KEYWORD}'...")
     
