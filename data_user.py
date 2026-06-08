@@ -39,6 +39,9 @@ except Exception as e:
     print(f"[ERRO] Nao foi possivel sincronizar o contrato com a Nuvem: {e}")
     sys.exit(1)
 
+contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+
+
 AA_ENDPOINTS = {
     "AA_1": f"http://{LAPTOP_IP}:8001/keygen",
     "AA_2": f"http://{LAPTOP_IP}:8002/keygen"
