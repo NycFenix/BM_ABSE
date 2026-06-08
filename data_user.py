@@ -1,13 +1,15 @@
 import sys
+import json
 import requests
 import hashlib
-import json
+import time  # --- LINHA ADICIONADA PARA CRONOMETRAGEM ---
+import matplotlib.pyplot as plt  # --- LINHA ADICIONADA PARA GERAR O GRÁFICO ---
 from py_ecc.bn128 import G1, G2, multiply, curve_order
 from Crypto.Cipher import AES
 from web3 import Web3
 
 if len(sys.argv) < 4:
-    print("Uso correto: python data_user.py <Nome_DU> <Index_ID_Blockchain> <Palavra_Busca>")
+    print("Uso correto: python data_user.py <Nome_DU> <Index_ID> <Palavra_Busca>")
     sys.exit(1)
 
 DU_NAME = sys.argv[1]
@@ -17,82 +19,63 @@ SEARCH_KEYWORD = sys.argv[3]
 LAPTOP_IP = "192.168.0.112"
 w3 = Web3(Web3.HTTPProvider(f"http://{LAPTOP_IP}:7545"))
 
-# contract_address = "0x0000000000000000000000000000000000000000"
-# contract_abi = [...]
-# contract = w3.eth.contract(address=contract_address, abi=contract_abi)
-
 try:
-    with open("contract_config.json", "r") as config_file:
-        config = json.load(config_file)
-    contract_address = config["contract_address"]
-    contract_abi = config["abi"]
-    print(f"[*] Contrato carregado automaticamente no endereço: {contract_address}")
+    with open("contract_config.json", "r") as f:
+        config = json.load(f)
+    contract = w3.eth.contract(address=config["contract_address"], abi=config["abi"])
 except FileNotFoundError:
-    print("[ERRO] Arquivo 'contract_config.json' não encontrado. Execute o deploy_contract.py primeiro.")
+    print("[ERRO] Executar o deploy_contract.py no laptop primeiro.")
     sys.exit(1)
 
-contract = w3.eth.contract(address=contract_address, abi=contract_abi)
-
-
-# Configuração de Atributos e Endereços das 3 Autoridades para a demonstração
 AA_ENDPOINTS = {
-    "AA_1": "http://192.168.1.50:8001/keygen",
-    "AA_2": "http://192.168.1.50:8002/keygen",
-    "AA_3": "http://192.168.1.50:8003/keygen"
+    "AA_1": f"http://{LAPTOP_IP}:8001/keygen",
+    "AA_2": f"http://{LAPTOP_IP}:8002/keygen"
 }
 
-# Matriz de Atributos e Contas da Blockchain exclusivas para cada Usuário da banca
 USER_PROFILES = {
-    "DU_1": {"gid": "user_joao", "account_idx": 1, "attrs": {"AA_1": ["Admin"], "AA_2": ["Engenheiro"], "AA_3": ["Nivel_3"]}},
-    "DU_2": {"gid": "user_maria", "account_idx": 3, "attrs": {"AA_1": ["Leitura"], "AA_2": ["Visitante"], "AA_3": ["Nivel_1"]}},
-    "DU_3": {"gid": "user_carlos", "account_idx": 4, "attrs": {"AA_1": ["Admin"], "AA_2": ["Diretor"], "AA_3": ["Nivel_3"]}}
+    "DU_1": {"gid": "joao_mestre", "acc": 1, "attrs": {"AA_1": ["Supervisor"], "AA_2": ["TI"]}},
+    "DU_2": {"gid": "maria_tech", "acc": 3, "attrs": {"AA_1": ["Operador"], "AA_2": ["Visitas"]}},
+    "DU_3": {"gid": "carlos_analista", "acc": 4, "attrs": {"AA_1": ["Supervisor"], "AA_2": ["Diretor"]}}
 }
 
 if DU_NAME not in USER_PROFILES:
-    print(f"Usuário inválido. Escolha entre: DU_1, DU_2 ou DU_3")
     sys.exit(1)
 
 profile = USER_PROFILES[DU_NAME]
-w3.eth.default_account = w3.eth.accounts[profile["account_idx"]]
+w3.eth.default_account = w3.eth.accounts[profile["acc"]]
 
-def fetch_keys_from_3_authorities():
-    print(f"[{DU_NAME}] Requisitando tokens às 3 Autoridades de Atributos (AA_1, AA_2, AA_3)...")
-    user_keys = {}
+# --- FUNÇÃO MODIFICADA PARA RECEBER O NÚMERO DE ATRIBUTOS E RETORNAR OS TEMPOS DE EXECUÇÃO ---
+def executar_teste_benchmark(num_attrs):
+    print(f"\n[Benchmark] Iniciando teste para {num_attrs} atributos...")
     
-    for aa_name, url in AA_ENDPOINTS.items():
-        try:
-            payload = {"gid": profile["gid"], "attributes": profile["attrs"].get(aa_name, [])}
-            res = requests.post(url, json=payload)
-            user_keys[aa_name] = res.json()["keys"]
-            print(f" -> Chaves obtidas com sucesso da {aa_name}")
-        except Exception as e:
-            print(f" [Aviso] Não foi possível conectar à {aa_name}")
-    return user_keys
-
-def search_and_decrypt():
-    # 1. Faz contato com as autoridades correspondentes
-    aa_tokens = fetch_keys_from_3_authorities()
-    
-    print(f"[{DU_NAME}] Gerando Trapdoor criptográfico para busca...")
+    # 1. Simulação do TrapGen e Chamada do Smart Contract
     s_trap = int.from_bytes(hashlib.sha256(SEARCH_KEYWORD.encode()).digest(), byteorder='big') % curve_order
-    
     T1 = multiply(G2, s_trap)
     T2 = multiply(G1, s_trap)
-    
     t1_sol = [int(T1[0].coeffs[0]), int(T1[0].coeffs[1]), int(T1[1].coeffs[0]), int(T1[1].coeffs[1])]
     t2_sol = [int(T2[0]), int(T2[1])]
     
-    print(f"[{DU_NAME}] Enviando Trapdoor ao Smart Contract na Blockchain...")
     match_result = contract.functions.searchMatch(INDEX_ID, t1_sol, t2_sol).call()
     
     if match_result:
         file_cid = contract.functions.registry(INDEX_ID).call()[3]
-        print(f"[{DU_NAME}] Match validado pela EVM! Resgatando do Servidor de Nuvem...")
         
-        res = requests.post(f"http://{LAPTOP_IP}:5000/semi_decrypt", json={"file_id": file_cid})
+        # 2. Medição do tempo do SemiDecrypt (Nuvem)
+        inicio_nuvem = time.perf_counter() # Captura timestamp inicial em alta precisão
+        
+        # Passa a quantidade de atributos no payload para que a nuvem processe proporcionalmente
+        res = requests.post(f"http://{LAPTOP_IP}:5000/semi_decrypt", json={
+            "file_id": file_cid,
+            "num_atributos": num_attrs 
+        })
         cloud_data = res.json()
         
-        # Descriptografia local no cliente (Leve)
+        fim_nuvem = time.perf_counter() # Captura timestamp final
+        tempo_nuvem_ms = (fim_nuvem - inicio_nuvem) * 1000 # Converte para milissegundos
+        
+        # 3. Medição do tempo do DataDecrypt (IoT Local)
+        inicio_iot = time.perf_counter()
+        
         ciphertext = bytes.fromhex(cloud_data["ciphertext"])
         tag = bytes.fromhex(cloud_data["tag"])
         nonce = bytes.fromhex(cloud_data["nonce"])
@@ -100,9 +83,50 @@ def search_and_decrypt():
         
         cipher_dec = AES.new(aes_key, AES.MODE_GCM, nonce=nonce)
         plaintext = cipher_dec.decrypt_and_verify(ciphertext, tag)
-        print(f"\n[SUCESSO] {DU_NAME} decifrou o dado: {plaintext.decode('utf-8')}\n")
+        
+        fim_iot = time.perf_counter()
+        tempo_iot_ms = (fim_iot - inicio_iot) * 1000
+        
+        print(f" -> Nuvem gasta: {tempo_nuvem_ms:.2f} ms | IoT gasta: {tempo_iot_ms:.2f} ms")
+        return tempo_nuvem_ms, tempo_iot_ms
     else:
-        print(f"\n[ACESSO NEGADO] Falha na busca. Palavra-chave incorreta ou privilégios de atributos insuficientes para o Índice {INDEX_ID}.\n")
+        print(" -> Falha na busca. Abortando benchmark.")
+        return None, None
 
+# --- BLOCO PRINCIPAL TOTALMENTE ALTERADO PARA COLETAR E PLOTAR OS CASOS 2, 4, 6 e 8 ---
 if __name__ == "__main__":
-    search_and_decrypt()
+    casos_atributos = [2, 4, 6, 8]
+    historico_nuvem = []
+    historico_iot = []
+    
+    print("="*60)
+    print(f" INICIANDO AMBIENTE DE BENCHMARK AUTOMATIZADO - {DU_NAME}")
+    print("="*60)
+    
+    # Executa a coleta sequencial para cada caso exigido
+    for qtd in casos_atributos:
+        t_nuvem, t_iot = executar_teste_benchmark(qtd)
+        if t_nuvem is not None:
+            historico_nuvem.append(t_nuvem)
+            historico_iot.append(t_iot)
+            
+    # Se todas as coletas foram executadas com sucesso, monta o gráfico na tela
+    if len(historico_nuvem) == len(casos_atributos):
+        print("\n[Benchmark] Gerando gráfico de desempenho...")
+        
+        plt.figure(figsize=(7, 4.5))
+        plt.plot(casos_atributos, historico_nuvem, color='#1f77b4', marker='o', linewidth=2, label='SemiDecrypt (Nuvem / Laptop)')
+        plt.plot(casos_atributos, historico_iot, color='#d62728', marker='s', linewidth=2, label='DataDecrypt (IoT / Raspberry Pi 3)')
+        
+        plt.title('Validação Criptográfica: Nuvem vs Hardware IoT Restrito', fontsize=11, fontweight='bold', pad=12)
+        plt.xlabel('Quantidade de Atributos Analisados')
+        plt.ylabel('Tempo de Execução Computacional (ms)')
+        plt.xticks(casos_atributos)
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.legend(frameon=True, facecolor='#fafafa', edgecolor='#dddddd')
+        plt.tight_layout()
+        
+        # Salva o gráfico gerado na pasta atual e abre a janela visual automaticamente
+        plt.savefig('resultado_benchmark_real.png', dpi=300)
+        print("[SUCESSO] Imagem salva como 'resultado_benchmark_real.png'.")
+        plt.show()

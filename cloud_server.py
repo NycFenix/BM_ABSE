@@ -1,7 +1,8 @@
 import uuid
 from flask import Flask, request, jsonify
 from py_ecc.bn128 import G1, G2, pairing, multiply
-
+import time
+import csv
 app = Flask(__name__)
 storage = {}
 
@@ -9,25 +10,38 @@ storage = {}
 def upload():
     data = request.json
     file_id = str(uuid.uuid4())
+
+    
     storage[file_id] = data
     return jsonify({"status": "success", "file_id": file_id}), 200
 
 @app.route('/semi_decrypt', methods=['POST'])
-def semi_decrypt(): # Algoritmo de Semi-decrypt
+def semi_decrypt():
     req_data = request.json
     file_id = req_data["file_id"]
     
+    # --- LINHAS ADICIONADAS PARA COLETA DO GRÁFICO 1 ---
+    # Recebe a quantidade de atributos sendo testada para calcular os pareamentos reais proporcionais
+    num_atributos = req_data.get("num_atributos", 2) 
+    # --------------------------------------------------
+
     file_data = storage.get(file_id)
     if not file_data:
         return jsonify({"error": "Arquivo nao encontrado"}), 404
         
-    print(f"[Nuvem - SemiDecrypt] Processando pareamentos bilineares para aliviar o IoT...")
+    print(f"[Nuvem - SemiDecrypt] Processando {num_atributos} atributos para aliviar o IoT...")
     
-    # Execução real do cálculo computacional pesado de acoplamento bilinear (Equações 14 e 15 do artigo)
-    # Reduzindo múltiplos elementos da curva para um fator único de decriptação simétrica leve
+    # --- LINHAS ALTERADAS PARA O CÁLCULO REAL MULTI-ATRIBUTO ---
+    # O artigo executa múltiplos pareamentos bilineares dependendo do número de atributos.
+    # Usamos um laço para executar a função pairing() da py_ecc de forma proporcional ao teste.
     dummy_user_g1 = multiply(G1, 7)
     dummy_attr_g2 = multiply(G2, 11)
+    
     tct_factor = pairing(dummy_attr_g2, dummy_user_g1)
+    for _ in range(num_atributos - 1):
+        # Multiplica o resultado do pareamento simulando o produtório de chaves do artigo
+        tct_factor = tct_factor * pairing(dummy_attr_g2, dummy_user_g1)
+    # -----------------------------------------------------------
     
     response_payload = {
         "ciphertext": file_data["ciphertext"],
