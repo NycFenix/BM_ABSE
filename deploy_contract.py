@@ -33,7 +33,7 @@ def deploy():
                 }
             },
         },
-        solc_version="0.0.0",
+        solc_version="0.8.0",
     )
 
     # Extrai o Bytecode e a ABI gerados na compilação
